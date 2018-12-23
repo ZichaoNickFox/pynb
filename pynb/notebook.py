@@ -486,6 +486,7 @@ class Notebook:
         self.add_argument('--import-ipynb', help='import from Jupyter notebook')
         self.add_argument('--export-html', help='export to HTML format')
         self.add_argument('--export-ipynb', help='export to Jupyter notebook')
+        self.add_argument('--with-generate-cellsfunc', action='store_true', default=False, help='export to Jupyter notebook with generating def cells function automaticly')
         self.add_argument('--export-pynb', help='export to Python notebook')
         self.add_argument('--kernel', default=None, help='set kernel')
         self.add_argument('--log-level', help='set log level')
@@ -573,52 +574,80 @@ class Notebook:
 
         self.nb.update(metadata=metadata)
 
+    def add_cells_funcion(self, path):
+        contents = []
+        with open(path, 'r') as f:
+            contents = f.readlines()
+        contents = list(map(lambda content:'    ' +content, contents))
+        contents.insert(0, "def cells():\n")
+        with open(self.args.cells, 'w') as f:
+            f.write("".join(contents))
+
+    def remove_cells_funcion(self, path):
+        contents = []
+        with open(path, 'r') as f:
+            contents = f.readlines()
+        del contents[0];
+        contents = list(map(lambda content:content[4:], contents))
+        with open(self.args.cells, 'w') as f:
+            f.write("".join(contents))
+
     def run(self):
         """
         Run notebook as an application
         :param params: parameters to inject in the notebook
         :return:
         """
-
         if not self.args:
             self.parse_args()
 
-        if self.args.log_level:
-            logging.getLogger().setLevel(logging.getLevelName(self.args.log_level))
-            logging.debug('Enabled {} logging level'.format(self.args.log_level))
+        added_cells_func = False
+        try:
+            if self.args.with_generate_cellsfunc:
+                self.add_cells_funcion(self.args.cells)
+                added_cells_func = True
 
-        if self.args.import_ipynb:
-            check_isfile(self.args.import_ipynb)
-            logging.info('Loading Jupyter notebook {}'.format(self.args.import_ipynb))
-            self.nb = nbf.read(self.args.import_ipynb, as_version=4)
-            uid = self.args.import_ipynb
-        else:
-            uid = self.load_cells_params()
+            if self.args.log_level:
+                logging.getLogger().setLevel(logging.getLevelName(self.args.log_level))
+                logging.debug('Enabled {} logging level'.format(self.args.log_level))
 
-        logging.debug("Unique id: '{}'".format(uid))
-        logging.info('Disable cache: {}'.format(self.args.disable_cache))
-        logging.info('Ignore cache: {}'.format(self.args.ignore_cache))
+            if self.args.import_ipynb:
+                check_isfile(self.args.import_ipynb)
+                logging.info('Loading Jupyter notebook {}'.format(self.args.import_ipynb))
+                self.nb = nbf.read(self.args.import_ipynb, as_version=4)
+                uid = self.args.import_ipynb
+            else:
+                uid = self.load_cells_params()
 
-        if self.args.export_pynb and not self.args.no_exec:
-            fatal('--export-pynb requires --no-exec')
+            logging.debug("Unique id: '{}'".format(uid))
+            logging.info('Disable cache: {}'.format(self.args.disable_cache))
+            logging.info('Ignore cache: {}'.format(self.args.ignore_cache))
 
-        if self.args.kernel:
-            self.set_kernel(self.args.kernel)
+            if self.args.export_pynb and not self.args.no_exec:
+                fatal('--export-pynb requires --no-exec')
 
-        self.process(uid=uid,
-                     add_footer=not self.args.disable_footer,
-                     no_exec=self.args.no_exec,
-                     disable_cache=self.args.disable_cache,
-                     ignore_cache=self.args.ignore_cache)
+            if self.args.kernel:
+                self.set_kernel(self.args.kernel)
 
-        if self.args.export_html:
-            self.export_html(self.args.export_html)
+            self.process(uid=uid,
+                        add_footer=not self.args.disable_footer,
+                        no_exec=self.args.no_exec,
+                        disable_cache=self.args.disable_cache,
+                        ignore_cache=self.args.ignore_cache)
 
-        if self.args.export_ipynb:
-            self.export_ipynb(self.args.export_ipynb)
+            if self.args.export_html:
+                self.export_html(self.args.export_html)
 
-        if self.args.export_pynb:
-            self.export_pynb(self.args.export_pynb)
+            if self.args.export_ipynb:
+                self.export_ipynb(self.args.export_ipynb)
+
+            if self.args.export_pynb:
+                self.export_pynb(self.args.export_pynb)
+        finally:
+            if added_cells_func:
+                self.remove_cells_funcion(self.args.cells)
+
+        
 
 
 def main():
