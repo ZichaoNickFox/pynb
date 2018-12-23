@@ -576,20 +576,20 @@ class Notebook:
 
     def add_cells_funcion(self, path):
         contents = []
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             contents = f.readlines()
         contents = list(map(lambda content:'    ' +content, contents))
         contents.insert(0, "def cells():\n")
-        with open(self.args.cells, 'w') as f:
+        with open(self.args.cells, 'w', encoding='utf-8') as f:
             f.write("".join(contents))
 
     def remove_cells_funcion(self, path):
         contents = []
-        with open(path, 'r') as f:
+        with open(path, 'r', encoding='utf-8') as f:
             contents = f.readlines()
         del contents[0];
         contents = list(map(lambda content:content[4:], contents))
-        with open(self.args.cells, 'w') as f:
+        with open(self.args.cells, 'w', encoding='utf-8') as f:
             f.write("".join(contents))
 
     def run(self):
